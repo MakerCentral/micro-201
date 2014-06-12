@@ -42,8 +42,10 @@ or via the python interpreter:
 
 The program takes two optional arguments:
 
-    <POST_INTERVAL>   - The time in seconds between tweets. Supports floating point for sub-second resolution.
-    <UPDATE_INTERVAL> - The time in seconds between sensor updates. Supports floating point for sub-second resolution.
+    <POST_INTERVAL>   - The time in seconds between tweets. Supports floating point for sub-second 
+                        resolution.
+    <UPDATE_INTERVAL> - The time in seconds between sensor updates. Supports floating point for
+                        sub-second resolution.
 
 These parameters have sane defaults of 60 and 1 when not used. It is not
 recommended to post more frequently than every 5 seconds, and update more
