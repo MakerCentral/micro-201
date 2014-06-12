@@ -24,8 +24,8 @@ import htu21d
 TWITTER_FILE    = ".twitter_auth"
 CONSUMER_TOKEN  = "7BUWu047EIfcLy3rUWd9v0L56"
 CONSUMER_SECRET = "M63zg1GFcNsaIK1U8zEpcmNm11RuHJlAGuUrIuGOi6pTdJarEw"
-POST_FREQ       = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-UPDATE_FREQ     = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+POST_FREQ       = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
+UPDATE_FREQ     = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
 STATUS          = "[Raspberry Pi] Temperature: {0:.2f} °C, Humidity: {1:.2f} %" 
 
 #####################################################################
