@@ -25,9 +25,10 @@ import htu21d
 TWITTER_FILE    = ".twitter_auth"
 CONSUMER_TOKEN  = "7BUWu047EIfcLy3rUWd9v0L56"
 CONSUMER_SECRET = "M63zg1GFcNsaIK1U8zEpcmNm11RuHJlAGuUrIuGOi6pTdJarEw"
-POST_FREQ       = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
-UPDATE_FREQ     = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
-STATUS          = "[Raspberry Pi] Temperature: {0:.2f} °C, Humidity: {1:.2f} %" 
+POST_FREQ       = float(sys.argv[2]) if len(sys.argv) > 2 else 30.0
+UPDATE_FREQ     = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
+DEV_NAME        = sys.argv[1] if len(sys.argv) > 1 else "Raspberry Pi"
+STATUS          = "[{0}] Temperature: {1:.2f} °C, Humidity: {2:.2f} %" 
 
 #####################################################################
 # CODE 
@@ -77,16 +78,18 @@ def init_sensor():
 
 # Read the sensor value
 def read_sensor(v, sensor):
-    while True:
-        v.t = sensor.temperature
-        v.h = sensor.humidity
-        v.u = True
-        
-        write_lock.acquire()
-        print "UPDATE: {0}, {1}".format(t, h)
-        write_lock.release()
+    try:
+        while True:
+            v.t = t = sensor.temperature
+            v.h = h = sensor.humidity
+            v.u = True
+            
+            write_lock.acquire()
+            print "UPDATE: {0}, {1}".format(t, h)
+            write_lock.release()
 
-        time.sleep(UPDATE_FREQ)
+            time.sleep(UPDATE_FREQ)
+    except KeyboardInterrupt: pass
 
 def post_update(v, twitter):
     try:
@@ -97,7 +100,7 @@ def post_update(v, twitter):
                 v.u = False
 
                 # Generate the status tweet
-                msg = STATUS.format(v.t, v.h)
+                msg = STATUS.format(DEV_NAME, v.t, v.h)
                 
                 # Output the status to the console 
                 write_lock.acquire()
@@ -111,6 +114,7 @@ def post_update(v, twitter):
                 time.sleep(POST_FREQ)
 
     # Handle exceptions
+    except KeyboardInterrupt: pass
     except Exception, ex:
         if not isinstance(ex, tweepy.TweepError) or re.search('duplicate', ex.reason) is None:
             write_lock.acquire()
