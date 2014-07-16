@@ -10,6 +10,7 @@ import math
 import random
 import webbrowser
 import multiprocessing
+import ctypes
 
 # Twitter python binding
 import tweepy
@@ -74,71 +75,71 @@ def init_twitter():
 def init_sensor():
     return htu21d.HTU21D()
 
-def read_sensor(q, sensor):
+# Read the sensor value
+def read_sensor(v, sensor):
+    while True:
+        v.t = sensor.temperature
+        v.h = sensor.humidity
+        v.u = True
+        
+        write_lock.acquire()
+        print "UPDATE: {0}, {1}".format(t, h)
+        write_lock.release()
+
+        time.sleep(UPDATE_FREQ)
+
+def post_update(v, twitter):
     try:
         while True:
-            t = sensor.temperature
-            h = sensor.humidity
-            #t = float(random.randint(30,50))
-            #h = round(random.random() * 100.0,2)
-            q.put((t, h))
+            # Check for updates
+            if v.u:
+                # Clear the update
+                v.u = False
+
+                # Generate the status tweet
+                msg = STATUS.format(v.t, v.h)
+                
+                # Output the status to the console 
+                write_lock.acquire()
+                print "STATUS: {0}".format(msg)
+                write_lock.release()
+
+                # Post to twitter
+                twitter.update_status(msg)
             
-            write_lock.acquire()
-            print "UPDATE: {0}, {1}".format(t, h)
-            write_lock.release()
+                # Delay to update on a regular interval
+                time.sleep(POST_FREQ)
 
-            time.sleep(UPDATE_FREQ)
-
-    # Handle close edge case
-    except KeyboardInterrupt: pass
-
-def post_update(q, twitter):
-    try:
-        while True:
-            # Generate the status tweet
-            msg = STATUS.format(*(q.get()))
-            
-            # Output the status to the console 
-            write_lock.acquire()
-            print "STATUS: {0}".format(msg)
-            write_lock.release()
-
-            # Post to twitter
-            twitter.update_status(msg)
-            
-            # Delay to update on a regular interval
-            time.sleep(POST_FREQ)
-
-    # Handle edge cases and exceptions
-    except KeyboardInterrupt: pass
+    # Handle exceptions
     except Exception, ex:
         if not isinstance(ex, tweepy.TweepError) or re.search('duplicate', ex.reason) is None:
             write_lock.acquire()
             print "ERROR: {0}".format(ex)
             write_lock.release()
             
+# Create a ctype for sensor state (shared memory object)
+class Status(ctypes.Structure):
+    _fields_ = [('t', ctypes.c_double), ('h', ctypes.c_double), ('u', ctypes.c_bool)]
 
 # Initialize the system
-queue   = multiprocessing.Queue()
-sensor  = init_sensor()
-twitter = init_twitter()
-
-# Define sub-tasks as sub-processes
-p1 = multiprocessing.Process(target=read_sensor, args=(queue, sensor))
-p2 = multiprocessing.Process(target=post_update, args=(queue, twitter))
-
-# Start subprocesses
-p1.start()
-p2.start()
-
-# Block the main thread
 try:
-    raw_input()
-except KeyboardInterrupt: pass            
+    value   = multiprocessing.Value(Status, lock=True)
+    sensor  = init_sensor()
+    twitter = init_twitter()
 
-# Stop subprocesses
-p1.join()
-p2.join()
+    # Define sub-tasks as sub-processes
+    p1 = multiprocessing.Process(target=read_sensor, args=(value, sensor))
+    p2 = multiprocessing.Process(target=post_update, args=(value, twitter))
+
+    # Start subprocesses
+    p1.start()
+    p2.start()
+
+    # Block the main thread
+    p1.join()
+    p2.join()
+
+except KeyboardInterrupt: pass            
 
 # Exit the application cleanly
 sys.exit(0)
